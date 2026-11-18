@@ -2,6 +2,7 @@
 export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'Hoạt động' | 'Bị khóa';
 
+// src/types/index.ts
 export interface User {
   id: number;
   username: string;
@@ -9,9 +10,10 @@ export interface User {
   email: string;
   phone?: string;
   address?: string;
-  role: UserRole;
-  status: UserStatus;
-  createdAt: string;
+  role: 'ADMIN' | 'USER';
+  status: 'Hoạt động' | 'Bị khóa';
+  avatar?: string;
+  createdAt?: string;
 }
 
 // ====================== DATABASE ======================
@@ -72,3 +74,4 @@ export interface Notification {
   read: boolean;
   link?: string;
 }
+
