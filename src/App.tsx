@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Login from './features/auth/Login';
 import Dashboard from './features/user/Dashboard';
@@ -19,6 +19,19 @@ import Settings from './features/admin/Settings';
 import ProfileEdit from './features/profile/ProfileEdit';
 import Databasess from "./features/admin/Databasess";
 import ProtectedRoute from './features/auth/ProtectedRoute';
+
+// Import NotificationProvider
+import { NotificationProvider } from './features/user/NotificationContext';
+
+// Component bọc ngoài để chứa NotificationProvider (vì Routes chỉ nhận Route)
+const NotificationLayout = () => {
+  return (
+    <NotificationProvider>
+      <Outlet />
+    </NotificationProvider>
+  );
+};
+
 export default function App() {
   return (
     <Routes>
@@ -28,32 +41,33 @@ export default function App() {
 
       {/* Các trang có Layout (sidebar) */}
       <Route element={<ProtectedRoute />}>
-        <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/users/add" element={<UserForm />} />
-          <Route path="/users/edit/:id" element={<UserForm />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/databases" element={<Databases />} />
-          <Route path="/databases/create" element={<CreateDatabase />} />
-          <Route path="/databases/:id" element={<DatabaseDetail />} />
-          <Route path="/databases/:id/backups" element={<Backups />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/activities" element={<Activities />} />
-          <Route path="/monitoring" element={<Monitoring />} />
-          <Route path="/my-activities" element={<PersonalActivities />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/profile/edit" element={<ProfileEdit />} />
-          <Route path="/admin/databasess" element={<Databasess />} />
-
+        {/* Sử dụng NotificationLayout để bọc Provider */}
+        <Route element={<NotificationLayout />}>
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/users/add" element={<UserForm />} />
+            <Route path="/users/edit/:id" element={<UserForm />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/databases" element={<Databases />} />
+            <Route path="/databases/create" element={<CreateDatabase />} />
+            <Route path="/databases/:id" element={<DatabaseDetail />} />
+            <Route path="/databases/:id/backups" element={<Backups />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/activities" element={<Activities />} />
+            <Route path="/monitoring" element={<Monitoring />} />
+            <Route path="/my-activities" element={<PersonalActivities />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile/edit" element={<ProfileEdit />} />
+            <Route path="/admin/databasess" element={<Databasess />} />
+          </Route>
         </Route>
       </Route>
 
       {/* Mặc định chuyển về login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
-
     </Routes>
   );
 }

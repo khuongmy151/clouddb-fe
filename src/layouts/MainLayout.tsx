@@ -15,10 +15,11 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  XCircle,
 } from 'lucide-react';
-import { mockNotifications } from '../data/mock';
 import { useAuth } from '../features/auth/AuthContext';
+import { useNotifications } from '../features/user/NotificationContext';
+import { formatRelativeTime } from '../core/utils/date';
+import type { NotificationResponse } from '../features/user/api/notificationApi';
 
 type MenuItem =
   | { to: string; icon: React.ComponentType<{ className?: string }>; label: string; type?: never }
@@ -30,24 +31,23 @@ const menuItems: MenuItem[] = [
   { type: 'divider' },
   { to: '/admin/databasess', icon: Database, label: 'Quản lý Database' },
   { to: '/users', icon: Users, label: 'Quản lý người dùng' },
-  // Đã bỏ Thông báo khỏi sidebar (chuyển lên chuông)
   { to: '/monitoring', icon: Server, label: 'Giám sát hệ thống' },
   { to: '/activities', icon: Activity, label: 'Nhật ký hoạt động' },
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ];
 
-const iconMap = {
-  success: CheckCircle,
-  warning: AlertTriangle,
-  error: XCircle,
-  info: Info,
+// Map typeNotification → icon
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  System: Info,
+  From_Admin: CheckCircle,
+  Database: AlertTriangle,
 };
 
-const colorMap = {
-  success: 'text-emerald-500 bg-emerald-50',
-  warning: 'text-amber-500 bg-amber-50',
-  error: 'text-red-500 bg-red-50',
-  info: 'text-blue-500 bg-blue-50',
+// Map typeNotification → màu nền
+const colorMap: Record<string, string> = {
+  System: 'text-blue-500 bg-blue-50',
+  From_Admin: 'text-emerald-500 bg-emerald-50',
+  Database: 'text-amber-500 bg-amber-50',
 };
 
 export default function MainLayout() {
@@ -56,11 +56,12 @@ export default function MainLayout() {
   const [openNotif, setOpenNotif] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuth();
 
-  // Lấy tối đa 7 thông báo để hiện trong dropdown
-  const recentNotifs = mockNotifications.slice(0, 7);
-  const unreadCount = mockNotifications.filter((n) => !n.read).length;
+  const { user, logout } = useAuth();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
+
+  // Lấy tối đa 7 thông báo mới nhất để hiển thị trong dropdown
+  const recentNotifs = notifications.slice(0, 7);
 
   const handleLogout = async () => {
     setOpenUserMenu(false);
@@ -82,9 +83,20 @@ export default function MainLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Xử lý khi click vào một thông báo
+  const handleNotificationClick = async (n: NotificationResponse) => {
+    if (!n.isRead) {
+      await markAsRead(n.id);
+    }
+    if (n.link) {
+      navigate(n.link);
+    }
+    setOpenNotif(false);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
+      {/* ==================== SIDEBAR ==================== */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="p-4 border-b border-slate-700">
           <div className="flex items-center gap-2">
@@ -122,13 +134,14 @@ export default function MainLayout() {
         </nav>
       </aside>
 
-      {/* Main content */}
+      {/* ==================== MAIN ==================== */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
+        {/* ---------- Top bar ---------- */}
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="text-sm text-gray-500">
             Hệ thống quản lý & cấp phát cơ sở dữ liệu
           </div>
+
           <div className="flex items-center gap-3">
             {/* ========== CHUÔNG THÔNG BÁO ========== */}
             <div className="relative" ref={notifRef}>
@@ -142,7 +155,7 @@ export default function MainLayout() {
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unreadCount}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
@@ -168,29 +181,34 @@ export default function MainLayout() {
                       </div>
                     ) : (
                       recentNotifs.map((n) => {
-                        const Icon = iconMap[n.type as keyof typeof iconMap];
+                        const Icon = iconMap[n.typeNotification] || Info;
                         return (
                           <div
                             key={n.id}
-                            className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 ${!n.read ? 'bg-blue-50/40' : ''
+                            onClick={() => handleNotificationClick(n)}
+                            className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 ${!n.isRead ? 'bg-blue-50/40' : ''
                               }`}
                           >
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${colorMap[n.type as keyof typeof colorMap]
+                              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${colorMap[n.typeNotification] || 'text-gray-500 bg-gray-50'
                                 }`}
                             >
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p
-                                className={`text-sm leading-snug ${!n.read ? 'font-medium text-gray-900' : 'text-gray-600'
+                                className={`text-sm leading-snug ${!n.isRead
+                                  ? 'font-medium text-gray-900'
+                                  : 'text-gray-600'
                                   }`}
                               >
-                                {n.title}
+                                {n.content}
                               </p>
-                              <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {formatRelativeTime(n.createdAt)}
+                              </p>
                             </div>
-                            {!n.read && (
+                            {!n.isRead && (
                               <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                             )}
                           </div>
@@ -199,14 +217,14 @@ export default function MainLayout() {
                     )}
                   </div>
 
-                  {/* Nút Tất cả */}
+                  {/* Nút Xem tất cả */}
                   <div className="border-t border-gray-100">
                     <Link
                       to="/notifications"
                       onClick={() => setOpenNotif(false)}
                       className="block w-full text-center py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
                     >
-                      Tất cả
+                      Xem tất cả
                     </Link>
                   </div>
                 </div>
@@ -236,11 +254,12 @@ export default function MainLayout() {
                 )}
 
                 <span className="text-sm font-medium">
-                  {user?.username ?? '...'}
+                  {user?.username || '...'}
                 </span>
 
                 <ChevronDown
-                  className={`w-4 h-4 text-gray-400 transition ${openUserMenu ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-400 transition ${openUserMenu ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 

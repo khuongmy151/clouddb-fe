@@ -10,8 +10,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   username: string;
-  role: string;
-  avatar_url: string;
+  role: 'ADMIN' | 'USER';
+  avatar_url: string | null;
 }
 
 export const authApi = {
