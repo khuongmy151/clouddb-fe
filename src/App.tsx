@@ -12,7 +12,7 @@ import CreateDatabase from './features/user/CreateDatabase';
 import DatabaseDetail from './features/user/DatabaseDetail';
 import Backups from './features/user/Backups';
 import Notifications from './features/user/Notifications';
-import Activities from './features/user/Activities';
+import Activities from './features/admin/Activities';
 import Monitoring from './features/admin/Monitoring';
 import PersonalActivities from './features/user/PersonalActivities';
 import Settings from './features/admin/Settings';
