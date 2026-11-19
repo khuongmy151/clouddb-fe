@@ -1,23 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Upload } from 'lucide-react';
-import { mockUsers } from '../../data/mock';
+import { X, Upload, Loader2 } from 'lucide-react';
+import { profileApi, type UserProfile } from './api/profileApi';
 
 export default function ProfileEdit() {
   const navigate = useNavigate();
-  const user = mockUsers[1]; // user đang đăng nhập (sau này lấy từ auth)
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    fullName: user.fullName || '',
-    phone: user.phone || '',
-    address: user.address || '',
+    fullName: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await profileApi.getMyProfile();
+        setUser(res.data);
+        setForm({ fullName: res.data.fullname || '' });
+      } catch (err) {
+        console.error('Lỗi lấy thông tin', err);
+        setError('Không thể tải thông tin cá nhân.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Gọi API cập nhật thông tin cá nhân
-    navigate('/profile');
+    if (!form.fullName.trim()) {
+      setError('Họ tên không được để trống');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await profileApi.updateMyProfile({ fullname: form.fullName });
+      navigate('/profile');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Cập nhật thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -36,6 +74,12 @@ export default function ProfileEdit() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && (
+            <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Tên đăng nhập - chỉ xem, không sửa */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -43,7 +87,7 @@ export default function ProfileEdit() {
             </label>
             <input
               type="text"
-              value={user.username}
+              value={user?.username || ''}
               disabled
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
             />
@@ -70,30 +114,15 @@ export default function ProfileEdit() {
               </label>
               <input
                 type="email"
-                value={user.email}
+                value={user?.email || ''}
                 disabled
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
               />
             </div>
           </div>
 
-          {/* Ảnh đại diện */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ảnh đại diện
-            </label>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
-                <Upload className="w-6 h-6" />
-              </div>
-              <button
-                type="button"
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Chọn ảnh
-              </button>
-            </div>
-          </div>
+          {/* Ảnh đại diện (Tạm thời ẩn vì backend chưa hỗ trợ API update avatar) */}
+          {/* <div>...</div> */}
 
           {/* Nút */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -106,8 +135,10 @@ export default function ProfileEdit() {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 flex items-center gap-2"
             >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Lưu
             </button>
           </div>
